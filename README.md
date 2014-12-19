@@ -12,12 +12,19 @@ dimension for the player to consider.
 
 ### To Install
 ```bash
-$ git clone ...
+$ git clone https://github.com/giraffapus/raottt.git
 $ cd raottt
 $ pip install -r requirements.txt
 ```
 
 ### To Play
+
+Computer vs Computer (just sit back and relax ...)
+```bash
+$ ./play --show
+```
+
+Human vs Computer (if you want to join ...)
 ```bash
 $ ./play --blue=Human --red=Computer --show
 ```
