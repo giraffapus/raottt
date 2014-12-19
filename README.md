@@ -10,7 +10,6 @@ Once the time is up the player is forces to move that piece. This ensure a
 player does not occupy the center spot for the entire game, and adds another
 dimension for the player to consider.
 
-A simple console game ...
 ![Simple Console Game](../screenshots/raottt.png)
 
 ### To Install
