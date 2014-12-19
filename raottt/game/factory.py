@@ -1,0 +1,65 @@
+"""
+Game Factory
+"""
+
+
+from __future__ import absolute_import
+from ..game import opponent
+from ..util import Color
+from ..game.game import Game
+import random
+
+
+class Factory(object):
+    """Stores all the live games and adds new games as needed."""
+    def __init__(self, min_choices=3, verbose=False):
+        """Initialize the factory"""
+        self.min_choices = min_choices
+        self.verbose = verbose
+        self.available_games = {}
+        self.in_play = {}
+
+    def grab_game(self, player):
+        """Return a game that is valid for this player to play."""
+        color = player.color
+        opp_color = opponent(color)
+
+        possible_games = [g.ugid for g in self.available_games.values() if
+                          g.next_color == color and
+                          player.upid not in g.players[opp_color]]
+
+        if self.verbose:
+            print 'Player %s had %s possible games' % (
+                Color.me(player.color, player.upid),
+                Color.yellow(len(possible_games)))
+
+        for _ in xrange(self.min_choices - len(possible_games)):
+            game = Game.new(player.color)
+            possible_games.append(game.ugid)
+            self.available_games[game.ugid] = game
+            if self.verbose:
+                print 'Created games %s to fufill min_choices requirement' % (
+                    Color.yellow(game.ugid))
+                print 'There are now %s game in total' % (
+                    len(self.available_games) + len(self.in_play))
+
+        ugid = random.choice(possible_games)
+        self.in_play[ugid] = self.available_games[ugid]
+        del self.available_games[ugid]
+        return self.in_play[ugid]
+
+    def get_game(self, ugid):
+        """Returns the game associated with the specified ugid."""
+        return self.in_play[ugid]
+
+    def return_game(self, game):
+        """Returns the specified game back into the pool after a turn."""
+        assert game.ugid in self.in_play
+        assert game.ugid not in self.available_games
+        self.available_games[game.ugid] = game
+        del self.in_play[game.ugid]
+
+    def remove_game(self, game):
+        """Removes a game from play (because it has been won)."""
+        assert game.ugid in self.in_play
+        del self.in_play[game.ugid]
