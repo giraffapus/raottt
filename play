@@ -21,7 +21,6 @@ from raottt.game.game import Game
 from raottt.player.computer import ComputerPlayer
 from raottt.player.human import HumanPlayer
 from raottt.util import Color
-import copy
 
 
 def toggle(item1, item2):
@@ -44,9 +43,7 @@ def run_game(player1, player2, max_rounds, show=True):
         if game.game_over():
             break
 
-        old = copy.deepcopy(game.board)
-        move = game.make_move(player_toggle.next())
-        assert move == game.board.diff(old)
+        _ = game.make_move(player_toggle.next())
         game.validate()
 
         if show:
@@ -77,7 +74,7 @@ def main():
     elif args['--red'] == 'Computer':
         red = ComputerPlayer('Red', opponent)
     else:
-        print('Invalid argument --red=%s'.format(args['--red']))
+        print('Invalid argument --red={}'.format(args['--red']))
         print('Valid options are: Human or Computer')
         return
 

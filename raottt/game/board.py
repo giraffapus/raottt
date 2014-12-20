@@ -14,6 +14,7 @@ yet been placed on the board.
 """
 
 from __future__ import absolute_import
+from __future__ import print_function
 from __future__ import division
 from ..game import COLORS
 from ..game import INFINITY
@@ -88,7 +89,7 @@ class Board(object):
     def show(self):
         """Prints the board to stdout"""
         for square in [str(self.squares[i:i + 3]) for i in range(0, 9, 3)]:
-            print square
+            print(square)
 
     def empty_squares(self):
         """Returns a list of indices corresponding to empty squares"""

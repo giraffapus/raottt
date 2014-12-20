@@ -2,6 +2,7 @@
 Utility collection
 """
 
-import colorize
+from __future__ import absolute_import
+from . import colorize
 
 Color = colorize

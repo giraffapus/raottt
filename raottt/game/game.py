@@ -7,6 +7,7 @@ change in board value.
 """
 
 from __future__ import absolute_import
+from __future__ import print_function
 from ..game import COLORS
 from ..game import opponent
 from ..util import Color
@@ -76,22 +77,22 @@ class Game(object):
 
     def show(self):
         """Prints the board (in pretty colorized ASCII :-) to stdout."""
-        print 'Game: %s' % Color.yellow(self.ugid)
-        print 'Moves Performed: %s' % Color.yellow(self.moves_performed)
-        print 'Board Value: %s/%s' % (Color.blue(self.board.value('Blue')),
-                                      Color.red(self.board.value('Red')))
-        print 'Next Player: %s' % (Color.me(self.next_color,
-                                            self.next_color))
+        print('Game: %s' % Color.yellow(self.ugid))
+        print('Moves Performed: %s' % Color.yellow(self.moves_performed))
+        print('Board Value: %s/%s' % (Color.blue(self.board.value('Blue')),
+                                      Color.red(self.board.value('Red'))))
+        print('Next Player: %s' % (Color.me(self.next_color,
+                                            self.next_color)))
 
-        print 'Value Ratio (%s): %s' % (
+        print('Value Ratio (%s): %s' % (
             Color.me(self.next_color, self.next_color),
-            Color.yellow(self.board.value_ratio(self.next_color)))
+            Color.yellow(self.board.value_ratio(self.next_color))))
 
-        print 'Value Ratio (%s): %s' % (
+        print('Value Ratio (%s): %s' % (
             Color.me(opponent(self.next_color),
                      opponent(self.next_color)),
             Color.yellow(self.board.value_ratio(
-                opponent(self.next_color))))
+                opponent(self.next_color)))))
         self.board.show()
 
     def game_over(self):

@@ -4,11 +4,17 @@ REST (Swift App) player
 
 
 from __future__ import absolute_import
-from player import Player
+from .player import Player
 
 
 class RESTPlayer(Player):
-    """Implements a REST player (Api)"""
+    """Implements a REST player
+
+    GET raott/game      returns a new game
+    PUT raott/move      submit a move
+    GET raott/player    returns a player's stats
+     
+    """
     def __init__(self, color, opponent, name=None, upid=None):
         """Initializes the RESTPlayer"""
         super(RESTPlayer, self).__init__(color, opponent, name, upid)
