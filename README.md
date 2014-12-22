@@ -30,3 +30,34 @@ Human vs Computer (if you want to join ...)
 ```bash
 $ ./play --blue=Human --red=Computer --show
 ```
+
+### REST Api
+
+To create a new user profile
+```JSON
+GET raottt/game/user
+```
+
+To get a game to play (take a turn) for a given unique player id
+```JSON
+GET raottt/game/upid
+{
+	secret: 'user_secret'
+}
+```
+
+To return the move made for a given game
+```json
+PUT raott/move/upid
+{
+	secret: 'user_secret',
+	move_from: <position>,
+	move_to: <position>
+}
+
+To get the current stats for a given user
+```JSON
+GET raott/player/upid
+{
+	secret: 'user_secret'
+}

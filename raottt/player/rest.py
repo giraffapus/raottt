@@ -28,22 +28,3 @@ class RESTPlayer(Player):
     def get_move(self, board):
         """Returns the move that was queued"""
         return self.move
-
-    # def game_state(game, player, hint='Your turn ...'):
-    #     """Adapts the game and player state to the format expected by the
-    #     swift code"""
-    #     board_squares = game.board.dump()
-    #     possible_moves = [s for (s, _) in game.board.available_moves(player)]
-    #     for i, square in enumerate(board_squares):
-    #         square['position'] = i+1
-    #         if i in possible_moves:
-    #             square['movable'] = True
-    #         else:
-    #             square['movable'] = False
-
-    #     return json.dumps(
-    #         {'pieces': board_squares,
-    #          'moveNumber': game.moves_performed + 1,
-    #          'nextPlayer': game.next_player,
-    #          'hint': hint,
-    #          'ugid': game.ugid})

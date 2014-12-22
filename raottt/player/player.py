@@ -11,6 +11,19 @@ import names
 import uuid
 
 
+class Bench(object):
+    """Implements the player bench which is used to track all know players"""
+    def __init__(self):
+        self.players = {}
+
+    def __getitem__(self, upid):
+        return self.players.get(upid, None)
+
+    def register(self, player):
+        """Register a new player"""
+        self.players[player.upid] = player
+
+
 class Player(object):
     """Implementation of a TTT Player. See the specific implmentations below"""
     def __init__(self, color, opponent, name=None, upid=None,):

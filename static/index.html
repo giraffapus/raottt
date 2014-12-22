@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+	<title>RAOTTT</title>
+
+	<script src="https://code.jquery.com/jquery-1.11.2.min.js"></script>
+	<script src="https://code.jquery.com/ui/1.11.2/jquery-ui.min.js"></script>
+	<script src="vendor/jquery.ui.touch-punch.js"></script>
+	<script src="vendor/jquery.rest.min.js"></script>
+	<script src="vendor/jquery.cookie.js"></script>
+
+	<style type="text/css">
+
+	.board {
+		position: absolute;
+	}
+
+	.tile {
+	    position: absolute;
+	    border: 1px dashed DarkGray;
+	    z-index: 1
+	}
+
+	.piece {
+	    position: absolute;
+	    z-index: 2;	
+	    font-family: Verdana;
+	    color: White;
+	    text-align: center;
+	    vertical-align:middle;
+	}
+
+	.score {
+		position: absolute;
+		width: 615px;
+		height: 190px;
+		border: 1px dashed Gray;
+	}
+
+	.red {
+		background-color: Crimson;
+	}
+
+	.blue {
+		background-color: BlueViolet;
+	}
+
+	.draggable {
+	}
+
+	.droppable {
+	}
+
+	.drop-hover {
+		border: 1px solid Black;
+	}
+
+	</style>
+
+	<script>
+		var restClient = undefined;
+		var userToken = undefined;
+		var gameId = undefined;
+		var moveSource = undefined;
+		var moveTarget = undefined;
+
+        $(function() {
+        	$.removeCookie('token');
+
+        	initRestInterface();
+
+			getUserToken().pipe(getGame).pipe(function(data){
+				console.log('GameData: %o', data);
+				console.log('userToken: %o', userToken);
+				console.log('gameId: %o', gameId);
+			});
+
+	       	var sizes = sizeFactors(window.innerWidth, window.innerHeight);
+	       	positionBoard(sizes);
+        	layoutBoard(sizes.tile, sizes.padding);
+        	scalePieces(sizes.tile, sizes.font, sizes.padding, sizes.radius);
+			setupInteraction(sizes);
+        });
+
+
+		function initRestInterface() {
+        	restClient = new $.RestClient('http://127.0.0.1:5000/');
+			restClient.add('game');
+			restClient.add('player');
+		}
+
+
+		function getUserToken() {
+			var deferred = $.Deferred();
+
+			var token = $.cookie('token');
+			if(token) {
+				userToken = token;
+				deferred.resolve(token);
+			}
+
+			var request = restClient.player.create();
+			request.done(function(data){
+				$.cookie('token', data.token);
+				userToken = data.token;
+				deferred.resolve(data.token);
+			});
+
+			return deferred.promise();
+		}
+
+		function getGame(token) {
+			var deferred = $.Deferred();
+
+			console.log("Fetching a game for token " + token);
+			var request = restClient.game.read(token);
+			request.done(function(data){
+				gameId = data.ugid;
+				deferred.resolve(data);
+			});
+
+			return deferred.promise();
+		}
+
+
+        function sizeFactors(wWidth, wHeight)
+        {
+        	var windowSize = wWidth < wHeight ? wWidth : wHeight;
+
+        	// Everything is based of the tilesize. For consistency, we want it
+        	// to be an even number, and we cap it at 160 for large displays.
+        	var tileSize = Math.floor(windowSize / 3.5);
+        	tileSize = tileSize % 2 ? tileSize - 1 : tileSize;
+        	tileSize = tileSize > 160 ? 160 : tileSize;
+
+        	s = {};
+        	s.tile = tileSize;
+        	s.font = Math.floor(tileSize * 0.8);
+        	s.padding = Math.floor(tileSize / 40);
+        	s.padding = s.padding % 2 ? s.padding + 1 : s.padding;
+        	s.board = 4 * s.padding + 3 * s.tile;
+        	s.offset = wWidth / 2 - s.board / 2;
+        	s.radius = Math.floor(tileSize / 15);
+
+        	console.log("Sizes: %o", s);
+        	return s;
+        };
+
+
+        function positionBoard(sizes) {
+        	$(".board").css("left", sizes.offset);
+        	$(".board").css("width",  sizes.board);
+        	$(".board").css("height", sizes.board);
+        };
+
+
+        function scalePieces(tileSize, fontSize, padding, radius) {
+        	function scalePiece(i) {
+        		$(this).css("width", tileSize - padding);
+        		$(this).css("height", tileSize - padding);
+        		$(this).css("font-size", fontSize);
+        		$(this).css("border-radius", radius);
+        		// $(this).css("top", $("board").css("height") + 2 * padding);
+        	}
+
+        	$(".piece").each(scalePiece);
+        };
+
+        function layoutBoard(tileSize, padding) {
+	        function scaleAndPositionTile(i) {
+	        	$(this).css("width", tileSize);
+	        	$(this).css("height", tileSize);
+
+	        	var col = i % 3;
+	        	var row = Math.floor(i/3);
+
+	        	$(this).css("left", padding * (col + 1) + col * tileSize);
+	        	$(this).css("top",  padding * (row + 1) + row * tileSize);
+	        }
+
+        	$(".tile").each(scaleAndPositionTile);
+        };
+
+
+        function setupInteraction(sizes) {
+        	$(".draggable").draggable({
+        		revertDuration: 200,
+        		zIndex: 100,
+        		cursor: "crosshair",
+        		revert: function(event, ui) { 
+        			if(event) {
+        				return false;
+        			}
+        			return true;
+        		}
+        	});
+
+        	$(".droppable").droppable({
+  				accept: ".draggable",
+  				hoverClass: "drop-hover",
+  				drop: function(event, ui) {
+  					$(ui.draggable).css('top',
+  						$(this).position().top + sizes.padding-1);
+   					$(ui.draggable).css('left',
+   						$(this).position().left + sizes.padding-1);
+  				}
+			});        	
+        };
+
+
+    </script>
+
+</head>
+
+<body bgcolor>
+	<div id="board" class="board">
+		<div class="ui-widget-content droppable tile"></div>
+		<div class="ui-widget-content droppable tile"></div>
+		<div class="ui-widget-content droppable tile"></div>
+		<div class="ui-widget-content droppable tile"></div>
+		<div class="ui-widget-content droppable tile"></div>
+		<div class="ui-widget-content droppable tile"></div>
+		<div class="ui-widget-content droppable tile"></div>
+		<div class="ui-widget-content droppable tile"></div>
+		<div class="ui-widget-content droppable tile"></div>
+
+		<div class="ui-widget-content draggable piece red">5</div>
+		<div class="ui-widget-content draggable piece blue">3</div>
+	</div>
+
+
+</body>
+</html>

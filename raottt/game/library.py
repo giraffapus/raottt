@@ -1,5 +1,5 @@
 """
-Game Factory
+Game Library
 """
 
 
@@ -11,7 +11,7 @@ from ..game.game import Game
 import random
 
 
-class Factory(object):
+class Library(object):
     """Stores all the live games and adds new games as needed."""
     def __init__(self, min_choices=3, verbose=False):
         """Initialize the factory"""
@@ -20,7 +20,7 @@ class Factory(object):
         self.available_games = {}
         self.in_play = {}
 
-    def grab_game(self, player):
+    def checkout(self, player):
         """Return a game that is valid for this player to play."""
         color = player.color
         opp_color = opponent(color)
@@ -39,19 +39,24 @@ class Factory(object):
             possible_games.append(game.ugid)
             self.available_games[game.ugid] = game
             if self.verbose:
-                print('Created games %s to fufill min_choices requirement' % (
+                print('Created game %s to fufill min_choices requirement' % (
                     Color.yellow(game.ugid)))
-                print('There are now %s game in total' % (
+                print('There are now %s games in total' % (
                     len(self.available_games) + len(self.in_play)))
 
         ugid = random.choice(possible_games)
-        self.in_play[ugid] = self.available_games[ugid]
+        game = self.available_games[ugid]
+        self.in_play[ugid] = (game, player.upid)
         del self.available_games[ugid]
-        return self.in_play[ugid]
+        return game
 
-    def get_game(self, ugid):
-        """Returns the game associated with the specified ugid."""
-        return self.in_play[ugid]
+    def get_game(self, ugid, upid):
+        """Returns the game associated with the specified ugid. Validates that
+        the specified player had the game checked out."""
+        (game, checked_out_by) = self.in_play.get(ugid, (None, None))
+        if not upid == checked_out_by:
+            return None
+        return game
 
     def return_game(self, game):
         """Returns the specified game back into the pool after a turn."""
