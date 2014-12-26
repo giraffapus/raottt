@@ -20,8 +20,17 @@ class Library(object):
         self.available_games = {}
         self.in_play = {}
 
+    def load(self, data):
+        """Load the games data - used for testing"""
+        for game_data in data:
+            game = Game.load(game_data)
+            self.available_games[game.ugid] = game
+
     def checkout(self, player):
         """Return a game that is valid for this player to play."""
+        print("Library.checkout avail={} play={}".format(
+            len(self.available_games), len(self.in_play)))
+
         color = player.color
         opp_color = opponent(color)
 
@@ -53,6 +62,9 @@ class Library(object):
     def get_game(self, ugid, upid):
         """Returns the game associated with the specified ugid. Validates that
         the specified player had the game checked out."""
+        print("Library.get_game avail={} play={}".format(
+            len(self.available_games), len(self.in_play)))
+
         (game, checked_out_by) = self.in_play.get(ugid, (None, None))
         if not upid == checked_out_by:
             return None
@@ -64,6 +76,8 @@ class Library(object):
         assert game.ugid not in self.available_games
         self.available_games[game.ugid] = game
         del self.in_play[game.ugid]
+        print("Library.return_game avail={} play={}".format(
+            len(self.available_games), len(self.in_play)))
 
     def remove_game(self, game):
         """Removes a game from play (because it has been won)."""

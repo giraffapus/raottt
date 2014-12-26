@@ -39,17 +39,20 @@ class Game(object):
         game.ugid = data['ugid']
         game.board = Board.load(data['board'])
         game.players = data['players']
-        game.moves_performed = data['movesPerformed']
+        game.moves_performed = data['moveNumber']
         return game
 
     def dump(self):
         """Returns the game state as a dict."""
         squares = self.board.dump()
+        pos_moves = self.board.available_moves(self.next_color)
+
         return {'board': squares,
                 'players': self.players,
                 'moveNumber': self.moves_performed + 1,
                 'nextPlayer': self.next_color,
-                'ugid': self.ugid}
+                'ugid': self.ugid,
+                'offBoard': sum([1 for (s, _) in pos_moves if s < 0]) > 0}
 
     def make_move(self, player):
         """Obtains a movr from the passed in player, and then applies that move

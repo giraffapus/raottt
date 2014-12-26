@@ -14,12 +14,17 @@ from raottt.game import opponent
 from raottt.game.library import Library
 from raottt.player.player import Bench
 from raottt.player.rest import RESTPlayer
+from raottt.player.computer import ComputerPlayer
+from raottt.util import adapter
 import json
 import uuid
+import pprint
 
 
 library = Library()
+#library.load(json.loads(open('games.json').read()))
 bench = Bench()
+spok = ComputerPlayer('Red', opponent)
 app = Flask(__name__, static_url_path='')
 api = Api(app)
 
@@ -36,14 +41,32 @@ class Game(Resource):
         upid = uid
         player = bench[upid]
         game = library.checkout(player)
-        return make_response(json.dumps(game.dump()))
+        return make_response(json.dumps(adapter.enrich_game(game)))
 
     def put(self, uid):
         """doc string"""
         token = request.form['token']
-        print("PUT game called with game id {} and token {}".format(
-            uid, token))
-        return make_response(json.dumps({'success': True}))
+        source = int(request.form['source'])
+        target = int(request.form['target'])
+        player = bench[token]
+        player.queue_move((source, target))
+        game = library.get_game(uid, token)
+        game.make_move(player)
+
+        if game.game_over():
+            library.return_game(game)
+            return make_response(json.dumps({'displayMsg': True,
+                                             'message': 'You Won!'}))
+
+        game.make_move(spok)
+        if game.game_over():
+            library.return_game(game)
+            return make_response(json.dumps({'displayMsg': True,
+                                             'message': 'You Loose :('}))
+
+        library.return_game(game)
+        return make_response(json.dumps({'displayMsg': False,
+                                         'message': 'Move Processed'}))
 
 
 class Player(Resource):
@@ -62,7 +85,6 @@ class Player(Resource):
     def post(self):
         """Create a new user"""
         player = RESTPlayer('Blue', opponent)
-        print('Created new player called {}'.format(player.name))
         bench.register(player)
         return make_response(json.dumps({'token': player.upid}))
 
@@ -77,4 +99,4 @@ def root():
     return app.send_static_file('index.html')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(port=8888, debug=True)

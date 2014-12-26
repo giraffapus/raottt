@@ -4,8 +4,8 @@
 
 	<title>RAOTTT</title>
 
-	<script src="https://code.jquery.com/jquery-1.11.2.min.js"></script>
-	<script src="https://code.jquery.com/ui/1.11.2/jquery-ui.min.js"></script>
+	<script src="vendor/jquery-1.11.2.min.js"></script>
+	<script src="vendor/jquery-ui.js"></script>
 	<script src="vendor/jquery.ui.touch-punch.js"></script>
 	<script src="vendor/jquery.rest.min.js"></script>
 	<script src="vendor/jquery.cookie.js"></script>
@@ -19,7 +19,13 @@
 	.tile {
 	    position: absolute;
 	    border: 1px dashed DarkGray;
-	    z-index: 1
+	    z-index: 1;
+	}
+
+	.benchTile {
+		position: absolute;
+		z-index: 1;
+		border: 1px solid Yellow;
 	}
 
 	.piece {
@@ -38,12 +44,12 @@
 		border: 1px dashed Gray;
 	}
 
-	.red {
-		background-color: Crimson;
+	.Red {
+		background-color: Green;
 	}
 
-	.blue {
-		background-color: BlueViolet;
+	.Blue {
+		background-color: Purple;
 	}
 
 	.draggable {
@@ -64,28 +70,29 @@
 		var gameId = undefined;
 		var moveSource = undefined;
 		var moveTarget = undefined;
+		var sizes = undefined;
 
         $(function() {
         	$.removeCookie('token');
 
+        	// Roslin Institute is where Dolly the Sheep was cloned. Here, the
+        	// Roslin div is the source from which all the playing pieces are 
+        	// cloned.
+        	$("#Roslin").hide(0);
+
         	initRestInterface();
 
-			getUserToken().pipe(getGame).pipe(function(data){
-				console.log('GameData: %o', data);
-				console.log('userToken: %o', userToken);
-				console.log('gameId: %o', gameId);
-			});
+	       	sizes = calculateSizeFactors(window.innerWidth, window.innerHeight);
 
-	       	var sizes = sizeFactors(window.innerWidth, window.innerHeight);
 	       	positionBoard(sizes);
         	layoutBoard(sizes.tile, sizes.padding);
-        	scalePieces(sizes.tile, sizes.font, sizes.padding, sizes.radius);
-			setupInteraction(sizes);
+
+        	getUserToken().pipe(getGame).pipe(addPieces).pipe(scalePieces).pipe(setupInteraction);
         });
 
 
 		function initRestInterface() {
-        	restClient = new $.RestClient('http://127.0.0.1:5000/');
+        	restClient = new $.RestClient('http://127.0.0.1:8888/');
 			restClient.add('game');
 			restClient.add('player');
 		}
@@ -113,18 +120,18 @@
 		function getGame(token) {
 			var deferred = $.Deferred();
 
-			console.log("Fetching a game for token " + token);
 			var request = restClient.game.read(token);
 			request.done(function(data){
 				gameId = data.ugid;
 				deferred.resolve(data);
+				console.log("Game: %o", data);
 			});
 
 			return deferred.promise();
 		}
 
 
-        function sizeFactors(wWidth, wHeight)
+        function calculateSizeFactors(wWidth, wHeight)
         {
         	var windowSize = wWidth < wHeight ? wWidth : wHeight;
 
@@ -136,14 +143,12 @@
 
         	s = {};
         	s.tile = tileSize;
-        	s.font = Math.floor(tileSize * 0.8);
+        	s.font = Math.floor(tileSize * 0.75);
         	s.padding = Math.floor(tileSize / 40);
         	s.padding = s.padding % 2 ? s.padding + 1 : s.padding;
         	s.board = 4 * s.padding + 3 * s.tile;
         	s.offset = wWidth / 2 - s.board / 2;
         	s.radius = Math.floor(tileSize / 15);
-
-        	console.log("Sizes: %o", s);
         	return s;
         };
 
@@ -151,24 +156,62 @@
         function positionBoard(sizes) {
         	$(".board").css("left", sizes.offset);
         	$(".board").css("width",  sizes.board);
-        	$(".board").css("height", sizes.board);
         };
 
 
-        function scalePieces(tileSize, fontSize, padding, radius) {
-        	function scalePiece(i) {
-        		$(this).css("width", tileSize - padding);
-        		$(this).css("height", tileSize - padding);
-        		$(this).css("font-size", fontSize);
-        		$(this).css("border-radius", radius);
-        		// $(this).css("top", $("board").css("height") + 2 * padding);
+        function clearBoard() {
+        	$(".piece").remove();
+        }
+
+        function addPieces(data) {
+        	function add(i, color, count, movable) {
+				var div = $("#Roslin").clone();
+				div.attr("data-source", i);
+				div.attr("data-color", color);
+				var pos = calculatePosition(i);
+				div.css("top", pos.top);
+				div.css("left", pos.left);
+				div.html(count);
+				div.addClass(color);
+				if(movable) {
+					div.addClass("draggable");
+				}
+				div.show();
+				$(".board").append(div);
+        	};
+
+        	$(data.board).each(function(i) {
+        		if(data.board[i].color) {
+        			add(i, data.board[i].color, data.board[i].count, data.board[i].movable);
+        		} else {
+        			addDropForThisTile(i);
+        		}
+        	});
+
+        	if(data.offBoard) {
+        		add(-1, data.nextPlayer, "", true);
         	}
-
-        	$(".piece").each(scalePiece);
         };
+
+
+        function addDropForThisTile(i) {
+        	var tile = $(".tile")[i];
+        	$(tile).addClass("droppable");
+        };
+
+
+        function scalePieces() {
+        	$(".piece").each(function(i) {
+        		$(this).css("width", sizes.tile - sizes.padding);
+        		$(this).css("height", sizes.tile - sizes.padding);
+        		$(this).css("font-size", sizes.font);
+        		$(this).css("border-radius", sizes.radius);
+        	});
+        };
+
 
         function layoutBoard(tileSize, padding) {
-	        function scaleAndPositionTile(i) {
+        	$(".tile").each(function(i) {
 	        	$(this).css("width", tileSize);
 	        	$(this).css("height", tileSize);
 
@@ -177,13 +220,54 @@
 
 	        	$(this).css("left", padding * (col + 1) + col * tileSize);
 	        	$(this).css("top",  padding * (row + 1) + row * tileSize);
-	        }
+	        	$(this).attr("data-target", i);
+	        });
 
-        	$(".tile").each(scaleAndPositionTile);
+        	$(".benchTile").css("width", tileSize);
+        	$(".benchTile").css("height", tileSize);
+        	$(".benchTile").css("left", 2 * padding + 1 * tileSize);
+			$(".benchTile").css("top", 5 * padding + 3 * tileSize + 10);
         };
 
 
-        function setupInteraction(sizes) {
+        function calculatePosition(i) {
+        	var tile = undefined;
+
+        	if(i === -1) {
+				tile = $(".benchTile")[0];
+			} else {
+				tile = $(".tile")[i];
+			}
+
+        	return {left: parseInt(tile.style.left) + sizes.padding - 1, 
+        	        top:  parseInt(tile.style.top)  + sizes.padding - 1};
+        };
+
+
+        function processMove(color, source, target) {
+        	console.log(color + " moved from " + source + " to " + target);
+
+        	var obj = {token: userToken,
+        	           gameId: gameId,
+        	           color: color,
+        	           source: source,
+        	           target: target};
+
+        	restClient.game.update(gameId, obj).done(function(data) {
+        		console.log("Update returned %o", data);
+        		
+        		if(data.displayMsg) {
+        			alert(data.message);
+        		}
+        		
+        		location.reload();
+        	});
+
+        	// clearBoard();
+        }
+
+
+        function setupInteraction() {
         	$(".draggable").draggable({
         		revertDuration: 200,
         		zIndex: 100,
@@ -200,10 +284,16 @@
   				accept: ".draggable",
   				hoverClass: "drop-hover",
   				drop: function(event, ui) {
+  					var sourceTile = $(ui.draggable).attr("data-source");
+  					var targetTile = $(this).attr("data-target");
+  					var color = $(ui.draggable).attr("data-color");
+
   					$(ui.draggable).css('top',
   						$(this).position().top + sizes.padding-1);
    					$(ui.draggable).css('left',
    						$(this).position().left + sizes.padding-1);
+
+   					processMove(color, sourceTile, targetTile);
   				}
 			});        	
         };
@@ -215,19 +305,19 @@
 
 <body bgcolor>
 	<div id="board" class="board">
-		<div class="ui-widget-content droppable tile"></div>
-		<div class="ui-widget-content droppable tile"></div>
-		<div class="ui-widget-content droppable tile"></div>
-		<div class="ui-widget-content droppable tile"></div>
-		<div class="ui-widget-content droppable tile"></div>
-		<div class="ui-widget-content droppable tile"></div>
-		<div class="ui-widget-content droppable tile"></div>
-		<div class="ui-widget-content droppable tile"></div>
-		<div class="ui-widget-content droppable tile"></div>
+		<div class="ui-widget-content tile"></div>
+		<div class="ui-widget-content tile"></div>
+		<div class="ui-widget-content tile"></div>
+		<div class="ui-widget-content tile"></div>
+		<div class="ui-widget-content tile"></div>
+		<div class="ui-widget-content tile"></div>
+		<div class="ui-widget-content tile"></div>
+		<div class="ui-widget-content tile"></div>
+		<div class="ui-widget-content tile"></div>
 
-		<div class="ui-widget-content draggable piece red">5</div>
-		<div class="ui-widget-content draggable piece blue">3</div>
-	</div>
+		<div class="ui-widget-content benchTile"></div>
+		<div id="Roslin" class="ui-widget-content piece"></div>
+ 	</div>
 
 
 </body>
