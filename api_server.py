@@ -22,7 +22,7 @@ import pprint
 
 
 library = Library()
-#library.load(json.loads(open('games.json').read()))
+library.load(json.loads(open('games.json').read()))
 bench = Bench()
 spok = ComputerPlayer('Red', opponent)
 app = Flask(__name__, static_url_path='')
@@ -54,19 +54,22 @@ class Game(Resource):
         game.make_move(player)
 
         if game.game_over():
-            library.return_game(game)
+            library.remove_game(game)
             return make_response(json.dumps({'displayMsg': True,
-                                             'message': 'You Won!'}))
+                                             'message': 'You Won!',
+                                             'score': 1234}))
 
         game.make_move(spok)
         if game.game_over():
-            library.return_game(game)
+            library.remove_game(game)
             return make_response(json.dumps({'displayMsg': True,
-                                             'message': 'You Loose :('}))
+                                             'message': 'You Loose :(',
+                                             'score': 1234}))
 
         library.return_game(game)
         return make_response(json.dumps({'displayMsg': False,
-                                         'message': 'Move Processed'}))
+                                         'message': 'Move Processed',
+                                         'score': 1234}))
 
 
 class Player(Resource):
@@ -99,4 +102,4 @@ def root():
     return app.send_static_file('index.html')
 
 if __name__ == '__main__':
-    app.run(port=8888, debug=True)
+    app.run(host='0.0.0.0', port=8888, debug=True)

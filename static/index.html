@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
 	<title>RAOTTT</title>
 
@@ -9,16 +10,44 @@
 	<script src="vendor/jquery.ui.touch-punch.js"></script>
 	<script src="vendor/jquery.rest.min.js"></script>
 	<script src="vendor/jquery.cookie.js"></script>
+	<script src="vendor/slidebars.min.js"></script>
+	<script src="http://vast-engineering.github.io/jquery-popup-overlay/jquery.popupoverlay.js"></script>
 
+	<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+	<link rel="stylesheet" href="vendor/slidebars.min.css">
 	<style type="text/css">
 
-	.board {
+
+	.stats {
 		position: absolute;
+		top: 0;
+		left: 0;
+		border: 1px solid Green;
+		height: 100px;
+		font-family: Verdana;
+	}
+
+	.overlay {
+	    background-color: #000;
+	    bottom: 0;
+	    display: none;
+	    left: 0;
+	    opacity: 0.3;
+	    filter: alpha(opacity = 30); /* IE7 & 8 */
+	    position: fixed;
+	    right: 0;
+	    top: 0;
+	    z-index: 99;
+	}
+
+	#Board {
+		position: absolute;
+		top: 50px;
 	}
 
 	.tile {
 	    position: absolute;
-	    border: 1px dashed DarkGray;
+	    border: 1px dashed LightGray;
 	    z-index: 1;
 	}
 
@@ -37,19 +66,12 @@
 	    vertical-align:middle;
 	}
 
-	.score {
-		position: absolute;
-		width: 615px;
-		height: 190px;
-		border: 1px dashed Gray;
-	}
-
 	.Red {
-		background-color: Green;
+		background-color: DarkRed;
 	}
 
 	.Blue {
-		background-color: Purple;
+		background-color: DarkBlue;
 	}
 
 	.draggable {
@@ -62,6 +84,40 @@
 		border: 1px solid Black;
 	}
 
+	.padding {
+		padding: 5px;
+	}
+
+	.iconButton {
+		height: 50px;
+		float: right;
+	}
+
+	.right {
+		float: right;
+	}
+
+	.left {
+		float: left;
+	}
+
+	#Score {
+		height: 50px;
+		float: left;
+		font-family: Verdana;
+		font-size: 28px;
+	}
+
+	#my_popup {
+		background-color: White;
+		border: 1px solid Black;
+		font-family: Verdana;
+		font-size: 14px;
+		line-height: 18px;
+		padding: 20px;
+		margin: 20px;
+	}
+
 	</style>
 
 	<script>
@@ -71,14 +127,31 @@
 		var moveSource = undefined;
 		var moveTarget = undefined;
 		var sizes = undefined;
+		var playerColor = undefined;
 
         $(function() {
+        	var settingsSidebar = new $.slidebars();
+        	settingsSidebar.slidebars.close();
+        	$("#ToggleSlidebar").click(function() {
+        		if(settingsSidebar.slidebars.active('right')) {
+        			settingsSidebar.slidebars.close();	
+        		} else {
+        			settingsSidebar.slidebars.open('right');
+        		}
+        	});
+
+        	$('#my_popup').popup({
+				opacity: 0.3,
+				transition: 'all 0.3s'
+				});
+
         	$.removeCookie('token');
 
         	// Roslin Institute is where Dolly the Sheep was cloned. Here, the
         	// Roslin div is the source from which all the playing pieces are 
         	// cloned.
         	$("#Roslin").hide(0);
+        	$("#Overlay").hide(0);
 
         	initRestInterface();
 
@@ -87,12 +160,20 @@
 	       	positionBoard(sizes);
         	layoutBoard(sizes.tile, sizes.padding);
 
-        	getUserToken().pipe(getGame).pipe(addPieces).pipe(scalePieces).pipe(setupInteraction);
+        	getUserToken().pipe(
+        		getGame).pipe(
+        			addPieces).pipe(
+        				scalePieces).pipe(
+        					setupInteraction).pipe(
+        						showStats);
+
+        	$('#HelpText').html(firstTimeGreeting('Hubert', 'Blue'));
+        	
         });
 
 
 		function initRestInterface() {
-        	restClient = new $.RestClient('http://127.0.0.1:8888/');
+        	restClient = new $.RestClient('http://192.168.2.9:8888/');
 			restClient.add('game');
 			restClient.add('player');
 		}
@@ -123,6 +204,7 @@
 			var request = restClient.game.read(token);
 			request.done(function(data){
 				gameId = data.ugid;
+				playerColor = data.nextPlayer;
 				deferred.resolve(data);
 				console.log("Game: %o", data);
 			});
@@ -133,13 +215,17 @@
 
         function calculateSizeFactors(wWidth, wHeight)
         {
+        	wHeight -= 50;
         	var windowSize = wWidth < wHeight ? wWidth : wHeight;
 
         	// Everything is based of the tilesize. For consistency, we want it
-        	// to be an even number, and we cap it at 160 for large displays.
-        	var tileSize = Math.floor(windowSize / 3.5);
+        	// to be an even number.
+        	var tileSize = Math.floor(windowSize / 3.2);
         	tileSize = tileSize % 2 ? tileSize - 1 : tileSize;
-        	tileSize = tileSize > 160 ? 160 : tileSize;
+
+        	console.log("wHeight:" + wHeight + 
+        		        " wWidth:" + wWidth +
+        		        " tileSize:" + tileSize);
 
         	s = {};
         	s.tile = tileSize;
@@ -154,12 +240,16 @@
 
 
         function positionBoard(sizes) {
-        	$(".board").css("left", sizes.offset);
-        	$(".board").css("width",  sizes.board);
+        	// $(".board").css("top", 100);
+        	$("#Board").css("left", sizes.offset);
+        	$("#Board").css("width", sizes.board);
+
+        	$("#Stats").css("left", sizes.offset);
+        	$("#Stats").css("width", sizes.board);
         };
 
 
-        function clearBoard() {
+        function resetBoard() {
         	$(".piece").remove();
         }
 
@@ -177,20 +267,25 @@
 					div.addClass("draggable");
 				}
 				div.show();
-				$(".board").append(div);
+				$("#Board").append(div);
         	};
 
         	$(data.board).each(function(i) {
         		if(data.board[i].color) {
-        			add(i, data.board[i].color, data.board[i].count, data.board[i].movable);
+        			var piece = data.board[i];
+        			add(i, piece.color, piece.count, piece.movable);
         		} else {
-        			addDropForThisTile(i);
+        			if(data.offBoard) {
+			        	var tile = $(".tile")[i];
+			        	$(tile).click(function(){
+			        		add(i, data.nextPlayer, 5, false);
+			        		processMove(data.nextPlayer, -1, i);
+			        	});
+        			} else {
+        				addDropForThisTile(i);
+        			}
         		}
         	});
-
-        	if(data.offBoard) {
-        		add(-1, data.nextPlayer, "", true);
-        	}
         };
 
 
@@ -222,11 +317,6 @@
 	        	$(this).css("top",  padding * (row + 1) + row * tileSize);
 	        	$(this).attr("data-target", i);
 	        });
-
-        	$(".benchTile").css("width", tileSize);
-        	$(".benchTile").css("height", tileSize);
-        	$(".benchTile").css("left", 2 * padding + 1 * tileSize);
-			$(".benchTile").css("top", 5 * padding + 3 * tileSize + 10);
         };
 
 
@@ -245,6 +335,8 @@
 
 
         function processMove(color, source, target) {
+			$('#Overlay').show();
+
         	console.log(color + " moved from " + source + " to " + target);
 
         	var obj = {token: userToken,
@@ -256,14 +348,14 @@
         	restClient.game.update(gameId, obj).done(function(data) {
         		console.log("Update returned %o", data);
         		
+        		$("#ScoreNumber").html(data.score);
+
         		if(data.displayMsg) {
         			alert(data.message);
         		}
         		
-        		location.reload();
+        		clearBoard();	
         	});
-
-        	// clearBoard();
         }
 
 
@@ -295,16 +387,39 @@
 
    					processMove(color, sourceTile, targetTile);
   				}
-			});        	
+			});
         };
 
+    	function showStats() {
+    		$("#playerName").html("stranger");
+    		$("#teamColor").html(playerColor + " Team!");
+    		$("#teamColor").addClass(playerColor);
+    	};	
+
+    	function firstTimeGreeting(name, color) {
+    		var txt = "Hello anonymous person, I shall call you " + name + " (it is much more personal, don't you think?)<br><br>You will play for the " + color + " team.<br><br>If you wish to play in a network, or for a different team, or on multiple devices, then you will have to login.";
+    		return txt;
+    	}
+
+    	function returnAnonGreeting(name, color, score) {
+    		var txt = "Welcome back " + name + " (remember that I gave you a name when you first stopped by ...). You are still playing for the " + color + " team. You have " + score + " points!";
+    		return txt;
+    	}
 
     </script>
 
 </head>
 
 <body bgcolor>
-	<div id="board" class="board">
+
+<div id="sb-site">
+	<div id="ToggleSlidebar" class="fa fa-arrow-circle-o-left right fa-3x padding"></div>
+
+	<div id="ShowHelp" class="fa fa-question-circle fa-3x right padding my_popup_open"></div>
+
+	<div id="Score" class="padding">Score: <span id="ScoreNumber">0</span></div>
+
+	<div id="Board" class="board">
 		<div class="ui-widget-content tile"></div>
 		<div class="ui-widget-content tile"></div>
 		<div class="ui-widget-content tile"></div>
@@ -315,10 +430,23 @@
 		<div class="ui-widget-content tile"></div>
 		<div class="ui-widget-content tile"></div>
 
-		<div class="ui-widget-content benchTile"></div>
 		<div id="Roslin" class="ui-widget-content piece"></div>
- 	</div>
+		<div id="Overlay" class="ui-widget-content overlay"></div>
+	</div>
 
+	<div id="my_popup">
+		<div id="HelpText">Text Goes Here</div>
+		<div>
+			<button class="my_popup_close right">Lets Play!</button>
+			<button class="left">Login First</button>
+		</div>
+	</div>
+
+	<div class="sb-slidebar sb-style-overlay sb-right sb-momentum-scrolling">
+		<div class="fa fa-arrow-circle-o-right fa-inverse fa-3x padding"></div>
+	</div>
+
+</div>
 
 </body>
 </html>
