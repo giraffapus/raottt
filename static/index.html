@@ -11,12 +11,13 @@
 	<script src="vendor/jquery.rest.min.js"></script>
 	<script src="vendor/jquery.cookie.js"></script>
 	<script src="vendor/slidebars.min.js"></script>
-	<script src="http://vast-engineering.github.io/jquery-popup-overlay/jquery.popupoverlay.js"></script>
+	<script src="vendor/jquery.popupoverlay.js"></script>
 
-	<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+	<link rel="stylesheet" href="vendor/font-awesome-4.2.0/css/font-awesome.min.css">
 	<link rel="stylesheet" href="vendor/slidebars.min.css">
-	<style type="text/css">
 
+
+	<style type="text/css">
 
 	.stats {
 		position: absolute;
@@ -101,6 +102,9 @@
 		float: left;
 	}
 
+	.occupied {
+	}
+
 	#Score {
 		height: 50px;
 		float: left;
@@ -128,30 +132,23 @@
 		var moveTarget = undefined;
 		var sizes = undefined;
 		var playerColor = undefined;
+		var showWelcome = false;
+		var score = 0;
 
         $(function() {
-        	var settingsSidebar = new $.slidebars();
-        	settingsSidebar.slidebars.close();
-        	$("#ToggleSlidebar").click(function() {
-        		if(settingsSidebar.slidebars.active('right')) {
-        			settingsSidebar.slidebars.close();	
-        		} else {
-        			settingsSidebar.slidebars.open('right');
-        		}
-        	});
-
-        	$('#my_popup').popup({
-				opacity: 0.3,
-				transition: 'all 0.3s'
-				});
-
         	$.removeCookie('token');
+        	showWelcome = true;
 
         	// Roslin Institute is where Dolly the Sheep was cloned. Here, the
         	// Roslin div is the source from which all the playing pieces are 
         	// cloned.
         	$("#Roslin").hide(0);
+
+        	// Overlay is used to blank out the board while getting a new game
+        	// from the server.
         	$("#Overlay").hide(0);
+
+			setupSideBar();
 
         	initRestInterface();
 
@@ -160,53 +157,67 @@
 	       	positionBoard(sizes);
         	layoutBoard(sizes.tile, sizes.padding);
 
-        	getUserToken().pipe(
-        		getGame).pipe(
-        			addPieces).pipe(
-        				scalePieces).pipe(
-        					setupInteraction).pipe(
-        						showStats);
-
-        	$('#HelpText').html(firstTimeGreeting('Hubert', 'Blue'));
-        	
+        	getUserToken().pipe(resetBoard);
         });
 
 
 		function initRestInterface() {
-        	restClient = new $.RestClient('http://192.168.2.9:8888/');
+        	restClient = new $.RestClient('http://127.0.0.1:8888/');
 			restClient.add('game');
 			restClient.add('player');
 		}
 
 
 		function getUserToken() {
+			console.log("getUserToken called")
 			var deferred = $.Deferred();
 
 			var token = $.cookie('token');
 			if(token) {
-				userToken = token;
-				deferred.resolve(token);
+				var request = restClient.player.read(token);
+				request.done(function(data) {
+					$.cookie('name', data.name);
+					$.cookie('color', data.color);
+					$('#HelpText').html(returnAnonGreeting(
+						$.cookie('name'), $.cookie('color'), data.score));
+					userToken = data.token;
+					score = data.score;
+					deferred.resolve(data.token);
+				});
+			} else {
+				var request = restClient.player.create();
+				request.done(function(data){
+					$.cookie('token', data.token);
+					$.cookie('name', data.name);
+					$.cookie('color', data.color);
+					$('#HelpText').html(firstTimeGreeting(
+						$.cookie('name'), $.cookie('color')));
+					userToken = data.token;
+					deferred.resolve(data.token);
+				});
 			}
-
-			var request = restClient.player.create();
-			request.done(function(data){
-				$.cookie('token', data.token);
-				userToken = data.token;
-				deferred.resolve(data.token);
-			});
 
 			return deferred.promise();
 		}
 
 		function getGame(token) {
+			console.log("getGame called with token %o", token);
 			var deferred = $.Deferred();
+
+			// if($.cookie('game')) {
+			// 	deferred.resolve($.cookie('game'));
+			// }
+
+			if(!token) {
+				token = $.cookie('token');
+			}
 
 			var request = restClient.game.read(token);
 			request.done(function(data){
+				// $.cookie('game', data.token);
 				gameId = data.ugid;
 				playerColor = data.nextPlayer;
 				deferred.resolve(data);
-				console.log("Game: %o", data);
 			});
 
 			return deferred.promise();
@@ -223,9 +234,9 @@
         	var tileSize = Math.floor(windowSize / 3.2);
         	tileSize = tileSize % 2 ? tileSize - 1 : tileSize;
 
-        	console.log("wHeight:" + wHeight + 
-        		        " wWidth:" + wWidth +
-        		        " tileSize:" + tileSize);
+        	// console.log("wHeight:" + wHeight + 
+        	// 	        " wWidth:" + wWidth +
+        	// 	        " tileSize:" + tileSize);
 
         	s = {};
         	s.tile = tileSize;
@@ -249,11 +260,24 @@
         };
 
 
-        function resetBoard() {
+        function resetBoard(token) {
+        	// First we have to remove all the pieces from the previous game
+        	// and set remove the droppable class from the tiles
         	$(".piece").remove();
+        	$(".tile").each(function(){
+    			$(this).removeClass("droppable");
+        	});
+
+        	getGame(token).pipe(
+				addPieces).pipe(
+    				scalePieces).pipe(
+    					setupInteraction).pipe(
+    						showStats);
         }
 
         function addPieces(data) {
+        	console.log("addPieces called with %o", data);
+
         	function add(i, color, count, movable) {
 				var div = $("#Roslin").clone();
 				div.attr("data-source", i);
@@ -262,6 +286,8 @@
 				div.css("top", pos.top);
 				div.css("left", pos.left);
 				div.html(count);
+				div.addClass("piece");
+				div.addClass("occupied");
 				div.addClass(color);
 				if(movable) {
 					div.addClass("draggable");
@@ -274,6 +300,7 @@
         		if(data.board[i].color) {
         			var piece = data.board[i];
         			add(i, piece.color, piece.count, piece.movable);
+        			removeDropForThisTile(i);
         		} else {
         			if(data.offBoard) {
 			        	var tile = $(".tile")[i];
@@ -286,7 +313,9 @@
         			}
         		}
         	});
-        };
+
+        	return data;
+        }
 
 
         function addDropForThisTile(i) {
@@ -295,13 +324,22 @@
         };
 
 
-        function scalePieces() {
+        function removeDropForThisTile(i) {
+        	var tile = $(".tile")[i];
+        	$(tile).removeClass("droppable");
+        };
+
+
+        function scalePieces(data) {
+        	console.log("scalePieces called");
         	$(".piece").each(function(i) {
         		$(this).css("width", sizes.tile - sizes.padding);
         		$(this).css("height", sizes.tile - sizes.padding);
         		$(this).css("font-size", sizes.font);
         		$(this).css("border-radius", sizes.radius);
         	});
+
+        	return data;
         };
 
 
@@ -339,27 +377,46 @@
 
         	console.log(color + " moved from " + source + " to " + target);
 
-        	var obj = {token: userToken,
+        	var obj = {token: $.cookie('token'),  // userToken,
         	           gameId: gameId,
         	           color: color,
         	           source: source,
         	           target: target};
 
+        	console.log("PUTing back to server %o", obj);
+
         	restClient.game.update(gameId, obj).done(function(data) {
-        		console.log("Update returned %o", data);
+        		console.log("Response from PUT %o", data);
         		
+        		$.removeCookie('game');
         		$("#ScoreNumber").html(data.score);
 
         		if(data.displayMsg) {
         			alert(data.message);
         		}
         		
-        		clearBoard();	
+        		resetBoard(userToken);	
         	});
         }
 
 
-        function setupInteraction() {
+        function setupInteraction(data) {
+        	console.log("setupInteraction called");
+
+			$(".occupied").each(function() {
+        		if($(this).droppable()) {
+	        		$(this).droppable('disable');
+	        	}
+
+        		$(this).unbind('click');
+			});
+
+			// If we have all 6 pieces on the board, then we need to unbind
+			// the click handler from all pieces
+			if(!data.offBoard) {
+				$(".tile").unbind('click');
+			}
+
         	$(".draggable").draggable({
         		revertDuration: 200,
         		zIndex: 100,
@@ -388,12 +445,19 @@
    					processMove(color, sourceTile, targetTile);
   				}
 			});
-        };
 
-    	function showStats() {
-    		$("#playerName").html("stranger");
-    		$("#teamColor").html(playerColor + " Team!");
-    		$("#teamColor").addClass(playerColor);
+			return data;
+        }
+
+    	function showStats(data) {
+    		console.log("showStats called");
+    		
+    		if(showWelcome) {
+    			$("#my_popup").popup('show');
+    			showWelcome = false;
+    		}
+
+    		$("#Overlay").hide(0);
     	};	
 
     	function firstTimeGreeting(name, color) {
@@ -402,15 +466,43 @@
     	}
 
     	function returnAnonGreeting(name, color, score) {
-    		var txt = "Welcome back " + name + " (remember that I gave you a name when you first stopped by ...). You are still playing for the " + color + " team. You have " + score + " points!";
+    		var txt = "Welcome back " + name + " (remember that I gave you a name when you first stopped by ...).<br><br>You are still playing for the " + color + " team.<br><br>You have " + score + " points!";
     		return txt;
+    	}
+
+
+    	function setupSideBar() {
+	    	var settingsSidebar = new $.slidebars();
+        	settingsSidebar.slidebars.close();
+
+        	$("#ToggleSlidebar").click(function() {
+        		if(settingsSidebar.slidebars.active('right')) {
+        			settingsSidebar.slidebars.close();	
+        		} else {
+        			settingsSidebar.slidebars.open('right');
+        		}
+        	});
+    	}
+
+
+    	function setupHelpPopup() {
+        	$('#my_popup').popup({
+				opacity: 0.3,
+				transition: 'all 0.3s'
+				});    		
+    	}
+
+
+    	function showHelpPopup(txt) {
+    		$('#HelpText').html(txt);
+    		$('#my_popup').popus('show');
     	}
 
     </script>
 
 </head>
 
-<body bgcolor>
+<body>
 
 <div id="sb-site">
 	<div id="ToggleSlidebar" class="fa fa-arrow-circle-o-left right fa-3x padding"></div>
@@ -430,7 +522,7 @@
 		<div class="ui-widget-content tile"></div>
 		<div class="ui-widget-content tile"></div>
 
-		<div id="Roslin" class="ui-widget-content piece"></div>
+		<div id="Roslin" class="ui-widget-content"></div>
 		<div id="Overlay" class="ui-widget-content overlay"></div>
 	</div>
 

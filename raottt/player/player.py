@@ -7,6 +7,7 @@ The ComputerPlayer uses a basic min/max algo to select the next move.
 
 from __future__ import absolute_import
 from ..util import Color
+from ..game import opponent
 import names
 import uuid
 
@@ -26,16 +27,17 @@ class Bench(object):
 
 class Player(object):
     """Implementation of a TTT Player. See the specific implmentations below"""
-    def __init__(self, color, opponent, name=None, upid=None,):
+    def __init__(self, color, opp=opponent, name=None, upid=None, score=0):
         self.color = color
-        self.opponent = opponent
+        self.opponent = opp
         self.name = name or names.get_first_name()
         self.upid = upid or uuid.uuid4().hex
+        self.score = score
 
     @classmethod
     def load(cls, data):
         """Loads the Player state from a python dict"""
-        return cls(data['color'], data['upid'])
+        return cls(color=data['color'], upid=data['upid'], score=data['score'])
 
     def __str__(self):
         """Return string representation of the player"""
@@ -43,7 +45,7 @@ class Player(object):
 
     def dump(self):
         """Dumps the Player state as a python dict"""
-        return {'color': self.color, 'upid': self.upid}
+        return {'color': self.color, 'upid': self.upid, 'score': self.score}
 
     def get_move(self, board):
         """Returns the user's move"""

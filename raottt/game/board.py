@@ -203,7 +203,14 @@ class Board(object):
 
     def value_ratio(self, color):
         """Returns the value of the board expressed as a ratio. The ratio
-        returned is specific to the player passed in"""
+        returned is specific to the player passed in. If the game has been
+        won then the ratio returned will be 0 or 1 depending on the winner."""
+        winner = self.winner()
+        if winner and color == winner:
+            return 1
+        if winner and color != winner:
+            return 0
+
         blue_val = self.value('Blue')
         red_val = self.value('Red')
         total_val = blue_val + red_val

@@ -12,6 +12,8 @@ from ..game import COLORS
 from ..game import opponent
 from ..util import Color
 from .board import Board
+from .score import update_score_post_move
+
 import uuid
 
 
@@ -24,6 +26,8 @@ class Game(object):
         self.next_color = first_player
         self.prev_player = None
         self.board = None
+        self.prev_score = {k: 0 for k in COLORS}
+        self.prev_score_ratio = {k: 0 for k in COLORS}
 
     @classmethod
     def new(cls, first_player):
@@ -40,6 +44,8 @@ class Game(object):
         game.board = Board.load(data['board'])
         game.players = data['players']
         game.moves_performed = data['moveNumber']
+        game.prev_score = data['prevScore']
+        game.prev_score_ratio = data['prevScoreRatio']
         return game
 
     def dump(self):
@@ -52,27 +58,24 @@ class Game(object):
                 'moveNumber': self.moves_performed + 1,
                 'nextPlayer': self.next_color,
                 'ugid': self.ugid,
+                'prevScore': self.prev_score,
+                'prevScoreRatio': self.prev_score_ratio,
                 'offBoard': sum([1 for (s, _) in pos_moves if s < 0]) > 0}
 
     def make_move(self, player):
         """Obtains a movr from the passed in player, and then applies that move
         to the game."""
-        assert player.color == self.next_color
+        color = player.color
+        assert color == self.next_color
         move = player.get_move(self.board)
-        score_before_move = self.board.value_ratio(player)
-        self.board.make_move(player.color, move[0], move[1])
-
-        score_after_move = self.board.value_ratio(player)
-        if score_after_move > score_before_move:
-            # TODO - inplement scoring logic
-            # User added value!
-            pass
+        self.board.make_move(color, move[0], move[1])
+        update_score_post_move(self, player)
+        self.prev_score[color] = self.board.value(color)
+        self.prev_score_ratio[color] = self.board.value_ratio(color)
 
         # Update players to record this user has taken a turn for this color
-        color = player.color
         upid = player.upid
         self.players[color][upid] = self.players[color].get(upid, 0) + 1
-
         self.moves_performed += 1
         self.board.age(opponent(color))
         self.next_color = opponent(color)

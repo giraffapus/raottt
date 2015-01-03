@@ -17,14 +17,12 @@ from raottt.player.rest import RESTPlayer
 from raottt.player.computer import ComputerPlayer
 from raottt.util import adapter
 import json
-import uuid
-import pprint
 
 
 library = Library()
 library.load(json.loads(open('games.json').read()))
 bench = Bench()
-spok = ComputerPlayer('Red', opponent)
+spok = ComputerPlayer('Red', opponent, name='Spok')
 app = Flask(__name__, static_url_path='')
 api = Api(app)
 
@@ -33,8 +31,8 @@ class Game(Resource):
     """
     Interacts with the game library
 
-    GET /game/ will return a new game that can be played by the user
-    PUT /game/ugid will apply a move to the given game
+    GET /game/id will return a new game that can be played by the user
+    PUT /game/id will apply a move to the given game
     """
     def get(self, uid):
         """doc string"""
@@ -45,6 +43,7 @@ class Game(Resource):
 
     def put(self, uid):
         """doc string"""
+        print(request.form)
         token = request.form['token']
         source = int(request.form['source'])
         target = int(request.form['target'])
@@ -52,24 +51,28 @@ class Game(Resource):
         player.queue_move((source, target))
         game = library.get_game(uid, token)
         game.make_move(player)
+        # print("After my move")
+        # game.show()
 
         if game.game_over():
             library.remove_game(game)
             return make_response(json.dumps({'displayMsg': True,
                                              'message': 'You Won!',
-                                             'score': 1234}))
+                                             'score': player.score}))
 
         game.make_move(spok)
+        # print("After Spock's move")
+        # game.show()
         if game.game_over():
             library.remove_game(game)
             return make_response(json.dumps({'displayMsg': True,
                                              'message': 'You Loose :(',
-                                             'score': 1234}))
+                                             'score': player.score}))
 
         library.return_game(game)
         return make_response(json.dumps({'displayMsg': False,
                                          'message': 'Move Processed',
-                                         'score': 1234}))
+                                         'score': player.score}))
 
 
 class Player(Resource):
@@ -82,14 +85,19 @@ class Player(Resource):
     def get(self, uid):
         """Return the user's stats"""
         player = bench[uid]
-        print("Looking up stats for {}".format(player.name))
-        return make_response(json.dumps({'name': player.name}))
+        return make_response(json.dumps({'name': player.name,
+                                         'color': player.color}))
 
     def post(self):
         """Create a new user"""
         player = RESTPlayer('Blue', opponent)
         bench.register(player)
-        return make_response(json.dumps({'token': player.upid}))
+        print("***** NEW USER CREATED *****")
+        print("* I shall call you {}".format(player.name))
+        print("* I will use id {}".format(player.upid))
+        return make_response(json.dumps({'token': player.upid,
+                                         'name': player.name,
+                                         'color': player.color}))
 
 
 api.add_resource(Game, '/game/', '/game/<string:uid>/')
@@ -98,8 +106,9 @@ api.add_resource(Player, '/player/', '/player/<string:uid>/')
 
 @app.route('/')
 def root():
-    """Route to serve the statc index.html page"""
+    """Route to serve the static index.html page"""
     return app.send_static_file('index.html')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8888, debug=True)
+    # app.run(host='0.0.0.0', port=8888, debug=True)
+    app.run(port=8888, debug=True)
