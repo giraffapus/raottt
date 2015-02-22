@@ -189,9 +189,9 @@ class Board(object):
 
         winner = self.winner()
         if winner and color == winner:
-            return INFINITY
+            return INFINITY + 1
         if winner and color != winner:
-            return -1 * (INFINITY+1)
+            return -1 * INFINITY
 
         occupied_val = sum([SQUARE_VALUE[i] * self.squares[i].count
                             for i in self.get_squares(color) if i >= 0])

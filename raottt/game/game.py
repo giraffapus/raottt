@@ -28,6 +28,7 @@ class Game(object):
         self.board = None
         self.prev_score = {k: 0 for k in COLORS}
         self.prev_score_ratio = {k: 0 for k in COLORS}
+        # self.prev_info = (None, None, None)  # (Player, Score, Ratio)
 
     @classmethod
     def new(cls, first_player):
@@ -63,13 +64,16 @@ class Game(object):
                 'offBoard': sum([1 for (s, _) in pos_moves if s < 0]) > 0}
 
     def make_move(self, player):
-        """Obtains a movr from the passed in player, and then applies that move
+        """Obtains a move from the passed in player, and then applies that move
         to the game."""
         color = player.color
         assert color == self.next_color
         move = player.get_move(self.board)
         self.board.make_move(color, move[0], move[1])
         update_score_post_move(self, player)
+        # self.prev_info = (player.upid,
+        #                   self.board.value(color),
+        #                   self.board.value_ratio(color))
         self.prev_score[color] = self.board.value(color)
         self.prev_score_ratio[color] = self.board.value_ratio(color)
 

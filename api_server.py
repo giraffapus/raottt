@@ -20,39 +20,66 @@ import json
 
 
 library = Library()
-library.load(json.loads(open('games.json').read()))
+# library.load(json.loads(open('games.json').read()))
 bench = Bench()
 spok = ComputerPlayer('Red', opponent, name='Spok')
 app = Flask(__name__, static_url_path='')
 api = Api(app)
 
 
+def oh_no():
+    """Create a Oh No! response"""
+    msg = {'displayMsg': True,
+           'message': ("On No!<br><br>Looks like something went wrong, please "
+                       "try to reload ...")}
+    return json.dumps(msg)
+
+
 class Game(Resource):
     """
     Interacts with the game library
 
-    GET /game/id will return a new game that can be played by the user
+    GET /game/id will return a new game that can be played by the user with id
     PUT /game/id will apply a move to the given game
     """
     def get(self, uid):
         """doc string"""
-        upid = uid
-        player = bench[upid]
+        player = bench[uid]
+        if not player:
+            print('ERROR: got request for unknown player: {}'.format(uid))
+            return make_response(oh_no())
+
         game = library.checkout(player)
+        if not game:
+            print('ERROR: could not find game for player: {}'.format(uid))
+            return make_response(oh_no())
+
         return make_response(json.dumps(adapter.enrich_game(game)))
 
     def put(self, uid):
         """doc string"""
-        print(request.form)
-        token = request.form['token']
-        source = int(request.form['source'])
-        target = int(request.form['target'])
+        # print(request.form)
+        try:
+            token = request.form['token']
+            source = int(request.form['source'])
+            target = int(request.form['target'])
+        except (KeyError, ValueError):
+            return make_response(oh_no())
+
         player = bench[token]
+        if not player:
+            print('ERROR: player {} not found!'.format(token))
+            return make_response(oh_no())
+
         player.queue_move((source, target))
         game = library.get_game(uid, token)
+        if not game:
+            print('ERROR: game uid {} player {} not found'.format(uid, player))
+            return make_response(oh_no())
+
         game.make_move(player)
-        # print("After my move")
-        # game.show()
+        print("After my move")
+        game.show()
 
         if game.game_over():
             library.remove_game(game)
@@ -61,8 +88,8 @@ class Game(Resource):
                                              'score': player.score}))
 
         game.make_move(spok)
-        # print("After Spock's move")
-        # game.show()
+        print("After Spock's move")
+        game.show()
         if game.game_over():
             library.remove_game(game)
             return make_response(json.dumps({'displayMsg': True,

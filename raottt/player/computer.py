@@ -3,6 +3,7 @@ Computer (MinMax AI) Player
 """
 
 from __future__ import absolute_import
+from __future__ import print_function
 from .player import Player
 from ..game import INFINITY
 import random
@@ -27,13 +28,19 @@ class ComputerPlayer(Player):
         """Selects the move that will minimize the value for the specified
         color."""
         horizon += 1
-        if board.winner() or horizon > self.MAX_HORIZON:
+        if horizon > self.MAX_HORIZON:
             return -1 * board.value(color)
 
-        best_value = INFINITY + 2
+        winner = board.winner()
+        if winner == color:
+            return -1 * INFINITY + horizon
+        elif winner == self.opponent(color):
+            return 1 * INFINITY - horizon
+
+        best_value = INFINITY
         for (source, target) in board.available_moves(color):
             board.make_move(color, source, target)
-            value = self.maximize(board, self.opponent(color), horizon)
+            value = self.maximize(board, self.opponent(color), horizon) - horizon
             board.undo_last_move()
             if value < best_value:
                 best_value = value
@@ -43,15 +50,20 @@ class ComputerPlayer(Player):
         """Selects the move that will maximize the value for the specified
         color"""
         horizon += 1
-        if board.winner() or horizon > self.MAX_HORIZON:
+        if horizon > self.MAX_HORIZON:
             return board.value(color)
 
+        winner = board.winner()
+        if winner == color:
+            return INFINITY - horizon
+        elif winner == self.opponent(color):
+            return -1 * (INFINITY + horizon)
         # Make sure that initial best_value is worse than the worst possible
         # move which would be to loose, and have a value on -(INFINITY+1)
-        best_value = -1 * (INFINITY+2)
+        best_value = -1 * INFINITY
         for (source, target) in board.available_moves(color):
             board.make_move(color, source, target)
-            value = self.minimize(board, self.opponent(color), horizon)
+            value = self.minimize(board, self.opponent(color), horizon) + horizon
             board.undo_last_move()
             if value > best_value:
                 best_value = value
@@ -61,15 +73,25 @@ class ComputerPlayer(Player):
         """Loops through all available moves and returns the 'best' move,
         which is the move that maximizes the score for the given color."""
         moves = []
-        best_value = -1 * (INFINITY+2)
+        best_value = -2 * INFINITY  # Worse than the worst possible move
 
         for (source, target) in board.available_moves(color):
             board.make_move(color, source, target)
-            value = self.minimize(board, self.opponent(color), 1)
+            value = self.minimize(board, self.opponent(color), 0)
             board.undo_last_move()
+            # print('%s -> %s has value %s' % (source, target, value))
             if value > best_value:
                 moves = [(source, target)]
                 best_value = value
             elif value == best_value:
                 moves.append((source, target))
+
+        if not moves:
+            print('****** No Moves *******')
+            print('Available Moves: %s' % board.available_moves(color))
+            for (source, target) in board.available_moves(color):
+                board.make_move(color, source, target)
+                print('Minimize (%s, %s) -> %s' % (source, target, self.minimize(board, self.opponent(color), 1)))
+                board.undo_last_move()
+            assert False, "No move found for computer player"
         return random.choice(moves)
