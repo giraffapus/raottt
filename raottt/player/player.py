@@ -1,5 +1,5 @@
 """
-Player - Implments Human and AI Modified TTT Players
+Player - Implments Human and AI Modified TTT Player interfaces
 
 The HumanPlayer reads commands from stdin.
 The ComputerPlayer uses a basic min/max algo to select the next move.
@@ -26,7 +26,8 @@ class Bench(object):
 
 
 class Player(object):
-    """Implementation of a TTT Player. See the specific implmentations below"""
+    """Implementation of a TTT Player interface. Specific implementation are
+    done in other classes."""
     def __init__(self, color, opp=opponent, name=None, upid=None, score=0):
         self.color = color
         self.opponent = opp

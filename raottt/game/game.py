@@ -24,11 +24,9 @@ class Game(object):
         self.players = {k: {} for k in COLORS}
         self.moves_performed = 0
         self.next_color = first_player
-        self.prev_player = None
         self.board = None
-        self.prev_score = {k: 0 for k in COLORS}
-        self.prev_score_ratio = {k: 0 for k in COLORS}
-        # self.prev_info = (None, None, None)  # (Player, Score, Ratio)
+        self.prev_states = [(None, 0, 0)]  # (Player, Score, Ratio)
+        self.prev_color_stats = {k: [(0, 0)] for k in COLORS}  # (Score, Ratio)
 
     @classmethod
     def new(cls, first_player):
@@ -45,8 +43,7 @@ class Game(object):
         game.board = Board.load(data['board'])
         game.players = data['players']
         game.moves_performed = data['moveNumber']
-        game.prev_score = data['prevScore']
-        game.prev_score_ratio = data['prevScoreRatio']
+        game.prev_states = data['prevStates']
         return game
 
     def dump(self):
@@ -59,8 +56,7 @@ class Game(object):
                 'moveNumber': self.moves_performed + 1,
                 'nextPlayer': self.next_color,
                 'ugid': self.ugid,
-                'prevScore': self.prev_score,
-                'prevScoreRatio': self.prev_score_ratio,
+                'prevStates': self.prev_states,
                 'offBoard': sum([1 for (s, _) in pos_moves if s < 0]) > 0}
 
     def make_move(self, player):
@@ -71,11 +67,9 @@ class Game(object):
         move = player.get_move(self.board)
         self.board.make_move(color, move[0], move[1])
         update_score_post_move(self, player)
-        # self.prev_info = (player.upid,
-        #                   self.board.value(color),
-        #                   self.board.value_ratio(color))
-        self.prev_score[color] = self.board.value(color)
-        self.prev_score_ratio[color] = self.board.value_ratio(color)
+        self.prev_states.append((player.upid,
+                                 self.board.value(color),
+                                 self.board.value_ratio(color)))
 
         # Update players to record this user has taken a turn for this color
         upid = player.upid
@@ -83,7 +77,6 @@ class Game(object):
         self.moves_performed += 1
         self.board.age(opponent(color))
         self.next_color = opponent(color)
-        return move
 
     def show(self):
         """Prints the board (in pretty colorized ASCII :-) to stdout."""

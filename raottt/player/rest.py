@@ -13,7 +13,6 @@ class RESTPlayer(Player):
     GET raott/game      returns a new game
     PUT raott/move      submit a move
     GET raott/player    returns a player's stats
-     
     """
     def __init__(self, color, opponent, name=None, upid=None):
         """Initializes the RESTPlayer"""

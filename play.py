@@ -43,8 +43,14 @@ def run_game(player1, player2, max_rounds, show=True):
         if game.game_over():
             break
 
-        _ = game.make_move(player_toggle.next())
+        player = player_toggle.next()
+        game.make_move(player)
         game.validate()
+
+        print(Color.me(player.color, "{}'s Score: {}".format(
+            player.name, player.score)))
+
+        # print('Player Score (%s): %s' % (player.name, player.score))
 
         if show:
             game.show()

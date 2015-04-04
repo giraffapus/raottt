@@ -170,7 +170,6 @@ class Board(object):
         """Undo the last move and restore the board to the previous state"""
         if self.undo_chain:
             undo = self.undo_chain.pop()
-            # print 'Undo:', undo
             self.squares[undo.target] = Square()
             if undo.source != -1:
                 # -1 is used as the source for a piece that is off the board,
@@ -186,7 +185,6 @@ class Board(object):
 
         If the color has won, then the value is INFINITY, and if the opponent
         has won, then the value is -INFINITY"""
-
         winner = self.winner()
         if winner and color == winner:
             return INFINITY + 1

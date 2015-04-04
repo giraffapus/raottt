@@ -5,7 +5,7 @@ layout things on the client side.
 """
 
 
-def enrich_game(game):
+def enrich_message(game):
     """Enriches the game json dump for the UI"""
     dump = game.dump()
 

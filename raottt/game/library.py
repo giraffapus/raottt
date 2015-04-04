@@ -21,15 +21,16 @@ class Library(object):
         self.in_play = {}
 
     def load(self, data):
-        """Load the games data - used for testing"""
+        """Load pre-created game data - used for testing"""
         for game_data in data:
             game = Game.load(game_data)
             self.available_games[game.ugid] = game
 
     def checkout(self, player):
-        """Return a game that is valid for this player to play."""
-        print("Library.checkout avail={} play={}".format(
-            len(self.available_games), len(self.in_play)))
+        """Returns a game that is valid for this player to play."""
+        if self.verbose:
+            print("Library.checkout avail={} play={}".format(
+                len(self.available_games), len(self.in_play)))
 
         color = player.color
         opp_color = opponent(color)
