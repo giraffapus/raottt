@@ -39,13 +39,18 @@ Shoulders (among others). Great stuff. Have +X points"
 
 
 from __future__ import print_function
+from __future__ import division
 from ..game import opponent
+import math
 
 
-def empty_score_tracker():
+
+def empty_score_tracker(ugid):
     """blah"""
-    return {'teams': {'red': {}, 'blue': {}},
-            'previous': {'red': (0, 0, 0), 'blue': (0, 0, 0)}}
+    return {'teams': {'Red': {}, 'Blue': {}},
+            'previous': {'Red': [(0, 0, 0)], 'Blue': [(0, 0, 0)]},
+            'num_moves': 0,
+            'ugid': ugid}
 
 
 def post_move_score_update(tracker, new_score, new_ratio, winner, color, upid):
@@ -56,6 +61,7 @@ def post_move_score_update(tracker, new_score, new_ratio, winner, color, upid):
     # Record the fact that this upid participated in the game
     tracker['teams'][color][upid] = tracker['teams'][color].get(upid, 0) + 1
     tracker['previous'][color].append((upid, new_score, new_ratio))
+    tracker['num_moves'] += 1
 
     # Calculate the score this player will get based on the rules:
     # +1 for every move
@@ -81,105 +87,40 @@ def post_move_score_update(tracker, new_score, new_ratio, winner, color, upid):
     return score, tracker
 
 
-"""
-class ScoreKeeper(object):
-    def __init__(self, ugid):
-        self.ugid = ugid
-        self.teams = {'red': {}, 'blue': {}}
-        self.previous = {'red': (0, 0, 0), 'blue': (0, 0, 0)}
-
-    def calculate_move_score(self, new_score, new_ratio, winner, color, upid):
-        """doc string"""
-        _, prev_score, _ = self.previous[color][-1]
-        _, _, prev_ratio = self.previous[opponent(color)][-1]
-
-        # Record the fact that this upid participated in the game
-        self.teams[color][upid] = self.teams[color].get(upid, 0) + 1
-        self.previous[color].append((upid, new_score, new_ratio))
-
-        # Calculate the score this player will get based on the rules:
-        # +1 for every move
-        # +1 if move improved the value of the board for your color
-        # -1 if you lower the value of the board for your color
-        # +2 if you change your color from being behind to ahead
-        # -1 if you change your color from being ahead to behind
-        # +3 if you make the winning move
-        score = 1
-        if new_score > prev_score:
-            score += 1
-        elif new_score < prev_score:
-            score -= 1
-
-        if prev_ratio < 0.50 and new_ratio > 0.50:
-            score += 2
-        elif prev_ratio > 0.50 and new_ratio < 0.50:
-            score -= 1
-
-        if winner == color:
-            score += 3
-
-        return score
-
-    def calculate_game_score(self, winning_color):
-        """doc srting"""
-        game_points = len(self.previous['red']) + len(self.previous['blue'])
-        winning_factor = 2
-        loosing_factor = -1
-
-        winners = {}
-        for upid, _, _ in self.previous[winning_color][1:]:
-            winners[upid] = winners.get(upid, 0) + 1
-        for upid in winners:
-            add_points(upid, winners[upid] * winning_factor)
-
-        loosers = {}
-        for upid, _, _ in self.previous[opponent(winning_color)][1:]:
-            loosers[upid] = loosers.get(upid, 0) + 1
-        for upid in loosers:
-            add_points(upid, loosers[upid] * loosing_factor)
-"""
-
-def add_points(upid, points):
-    """Adds points to the given user's profile"""
-    pass
+def show_score(tracker):
+    """Prints the score to the console"""
+    print('Game: {}'.format(tracker['ugid']))
+    print('Num Moves: {}'.format(tracker['num_moves']))
+    print('Team Red:  {}'.format(tracker['teams']['Red']))
+    print('Team Blue: {}'.format(tracker['teams']['Blue']))
 
 
-def update_score_post_move(game, player):
-    """blah"""
-    pass
+def post_game_score_update(winning_color, tracker, bench):
+    """Updates scores as a result of a game being won. THe idea is that all the
+    player (upids) that participated in the game share in the glory (or shame).
+    The total value of the game is dependent on the number of moves that were
+    taken, and each player gets a part of the point proportionate to the number
+    of moves that player made."""
+    points = tracker['num_moves']
+    win_factor = 2
+    team_size = len(tracker['teams'][winning_color])
+    for upid, moves in tracker['teams'][winning_color].items():
+        player = bench[upid]
+        if not player:
+            print("ERROR: could not find for upid {}".format(upid))
+            continue
+        add_score(player, moves, win_factor, points, team_size)
 
-#     """doc string"""
-#     player.score += calulate_incremental_score(game, player.color, player.name)
-
-
-# def calulate_incremental_score(game, color, name):
-#     """doc string"""
-#     score = 1  # +1 point for making a move
-
-#     prev_player, prev_score, prev_ratio = game.prev_states[-1]
-
-#     new_score = game.board.value(color)
-
-#     if new_score > prev_score:
-#         score += 1
-#     elif new_score < prev_score:
-#         score -= 1
-
-#     new_ratio = game.board.value_ratio(color)
-#     #print("ratio ({}): {} -> {}".format(name, prev_score_ratio, new_score_ratio))
-
-#     if prev_ratio < 0.50 and new_ratio > 0.50:
-#         score += 2
-#     elif prev_ratio > 0.50 and new_ratio < 0.50:
-#         score -= 1
-
-#     if game.game_over() == color:
-#         score += 5
-#         # Leave a message for the other player telling them the sad news ...
-#         # and subtract points from their score
+    loss_factor = -1
+    team_size = len(tracker['teams'][opponent(winning_color)])
+    for upid, moves in tracker['teams'][opponent(winning_color)].items():
+        player = bench[upid]
+        if not player:
+            print("ERROR: could not find for upid {}".format(upid))
+            continue
+        add_score(player, moves, loss_factor, points, team_size)
 
 
-
-#     return score
-
-
+def add_score(player, moves, factor, points, team_size):
+    """Adds to the player's score."""
+    player.score += factor * math.ceil(points/team_size) * moves

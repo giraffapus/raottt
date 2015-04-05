@@ -12,7 +12,11 @@ from ..game import COLORS
 from ..game import opponent
 from ..util import Color
 from .board import Board
-from .score import update_score_post_move
+from .score import empty_score_tracker
+from .score import post_move_score_update
+from .score import show_score
+from .score import post_game_score_update
+
 
 import uuid
 
@@ -21,12 +25,10 @@ class Game(object):
     """Tracks the current state as well as the history of the game."""
     def __init__(self, first_player):
         self.ugid = uuid.uuid4().hex
-        self.players = {k: {} for k in COLORS}
-        self.moves_performed = 0
-        self.next_color = first_player
         self.board = None
-        self.prev_states = [(None, 0, 0)]  # (Player, Score, Ratio)
-        self.prev_color_stats = {k: [(0, 0)] for k in COLORS}  # (Score, Ratio)
+        self.teams = {k: set() for k in COLORS}
+        self.next_color = first_player
+        self.score_tracker = empty_score_tracker(self.ugid)
 
     @classmethod
     def new(cls, first_player):
@@ -41,9 +43,7 @@ class Game(object):
         game = cls(data['nextPlayer'])
         game.ugid = data['ugid']
         game.board = Board.load(data['board'])
-        game.players = data['players']
-        game.moves_performed = data['moveNumber']
-        game.prev_states = data['prevStates']
+        game.teams = data['teams']
         return game
 
     def dump(self):
@@ -52,36 +52,48 @@ class Game(object):
         pos_moves = self.board.available_moves(self.next_color)
 
         return {'board': squares,
-                'players': self.players,
-                'moveNumber': self.moves_performed + 1,
+                'teams': self.teams,
                 'nextPlayer': self.next_color,
                 'ugid': self.ugid,
-                'prevStates': self.prev_states,
                 'offBoard': sum([1 for (s, _) in pos_moves if s < 0]) > 0}
 
     def make_move(self, player):
         """Obtains a move from the passed in player, and then applies that move
         to the game."""
         color = player.color
+        opp_color = opponent(player.color)
+        upid = player.upid
         assert color == self.next_color
+
         move = player.get_move(self.board)
         self.board.make_move(color, move[0], move[1])
-        update_score_post_move(self, player)
-        self.prev_states.append((player.upid,
-                                 self.board.value(color),
-                                 self.board.value_ratio(color)))
 
-        # Update players to record this user has taken a turn for this color
-        upid = player.upid
-        self.players[color][upid] = self.players[color].get(upid, 0) + 1
-        self.moves_performed += 1
-        self.board.age(opponent(color))
-        self.next_color = opponent(color)
+        score = self.board.value(color)
+        ratio = self.board.value_ratio(color)
+        winner = self.board.winner()
+
+        score, self.score_tracker = post_move_score_update(
+            self.score_tracker, score, ratio, winner, color, upid)
+
+        player.score += score
+
+        # Update teams to record this user has taken a turn for this color
+        self.teams[color].add(upid)
+        self.board.age(opp_color)
+        self.next_color = opp_color
+
+
+    def cleanup(self, bench):
+        """Called after a game has been won"""
+        post_game_score_update(
+            opponent(self.next_color), self.score_tracker, bench)
+
 
     def show(self):
         """Prints the board (in pretty colorized ASCII :-) to stdout."""
         print('Game: %s' % Color.yellow(self.ugid))
-        print('Moves Performed: %s' % Color.yellow(self.moves_performed))
+        print('Moves Performed: %s' % Color.yellow(
+            self.score_tracker['num_moves']))
         print('Board Value: %s/%s' % (Color.blue(self.board.value('Blue')),
                                       Color.red(self.board.value('Red'))))
         print('Next Player: %s' % (Color.me(self.next_color,
@@ -96,6 +108,8 @@ class Game(object):
                      opponent(self.next_color)),
             Color.yellow(self.board.value_ratio(
                 opponent(self.next_color)))))
+
+        show_score(self.score_tracker)
         self.board.show()
 
     def game_over(self):
@@ -110,7 +124,7 @@ class Game(object):
         assert pieces <= 6
 
         # If we have made 6 or more moves, then there must be 6 pieces
-        if self.moves_performed >= 6:
+        if self.score_tracker['num_moves'] >= 6:
             assert pieces == 6
 
         # Check that all pieces have a count between 1 and 5
@@ -123,6 +137,6 @@ class Game(object):
         assert pieces <= 1
 
         # Make sure the same upid has not played both sides
-        players = set(self.players['Red']).intersection(
-            set(self.players['Blue']))
+        players = set(self.teams['Red']).intersection(
+            set(self.teams['Blue']))
         assert not players

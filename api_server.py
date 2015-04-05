@@ -23,6 +23,7 @@ library = Library()
 # library.load(json.loads(open('games.json').read()))
 bench = Bench()
 spok = ComputerPlayer('Red', opponent, name='Spok')
+bench.register(spok)
 app = Flask(__name__, static_url_path='')
 api = Api(app)
 
@@ -88,6 +89,7 @@ class Game(Resource):
         game.show()
 
         if game.game_over():
+            game.cleanup(bench)
             library.remove_game(game)
             return res_wrap(json.dumps({'displayMsg': True,
                                         'message': 'You Won!',
@@ -97,6 +99,7 @@ class Game(Resource):
         print("After Spock's move")
         game.show()
         if game.game_over():
+            game.cleanup(bench)
             library.remove_game(game)
             return res_wrap(json.dumps({'displayMsg': True,
                                         'message': 'You Loose :(',

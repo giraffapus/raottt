@@ -87,7 +87,7 @@ def main():
     for _ in xrange(int(args["--games"])):
         game = run_game(blue, red, 999, args['--show'])
         print(Color.me(game.game_over(), '{} wins in {} moves!!!'.format(
-            game.game_over(), game.moves_performed)))
+            game.game_over(), game.score_tracker['num_moves'])))
 
 
 if __name__ == '__main__':

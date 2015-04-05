@@ -37,7 +37,7 @@ class Library(object):
 
         possible_games = [g.ugid for g in self.available_games.values() if
                           g.next_color == color and
-                          player.upid not in g.players[opp_color]]
+                          player.upid not in g.teams[opp_color]]
 
         if self.verbose:
             print('Player %s had %s possible games' % (
