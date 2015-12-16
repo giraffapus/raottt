@@ -63,9 +63,6 @@ def main():
     """main"""
     args = docopt(__doc__)
 
-    blue = None
-    red = None
-
     if args['--blue'] == 'Human':
         blue = HumanPlayer('Blue', opponent)
     elif args['--blue'] == 'Computer':

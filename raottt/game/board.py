@@ -195,8 +195,7 @@ class Board(object):
                             for i in self.get_squares(color) if i >= 0])
         free_squares = [SQUARE_VALUE[i] for i in self.empty_squares()]
         free_squares.sort()
-        free_squares.reverse()
-        free_val = sum(free_squares[1:])
+        free_val = sum(free_squares[:-1])
         return occupied_val + free_val
 
     def value_ratio(self, color):

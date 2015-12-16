@@ -62,3 +62,17 @@ GET raott/player/upid
 {
 	secret: 'user_secret'
 }
+
+
+### Notes
+
+PlayerStore wrapper around redis
+- create() creates a new player
+- get(upid) returns the player identified by upid
+- update_score(upid, score) increments upids score
+
+GameStore wrapper around redis
+ - checkout(upid) returns a game that upid can play
+ - checkin(game) returns a game to the GameStore for the next player grab
+ - get(ugid) returns the game identified by ugid
+

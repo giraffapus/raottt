@@ -9,7 +9,7 @@ var setupDone = false;
 
 
 function raottt() {
-    $.removeCookie('token');
+    //$.removeCookie('token');
     showWelcome = true;
 
     // Overlay is used to blank out the board while getting a new game
